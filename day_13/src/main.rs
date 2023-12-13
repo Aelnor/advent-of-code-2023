@@ -23,7 +23,6 @@ fn find_horizontal_symmetry(pattern: &Vec<Vec<char>>, number_of_fails: usize) ->
     let mut result = Vec::new();
     for i in 1..pattern.len() {
         let mut current_fails = 0;
-        let mut symmetry = true;
         let mut j = 0;
         loop {
             if i + j == pattern.len() || i - 1 < j {
@@ -34,18 +33,17 @@ fn find_horizontal_symmetry(pattern: &Vec<Vec<char>>, number_of_fails: usize) ->
                 if pattern[i + j][index] != pattern[i - j - 1][index] {
                     current_fails += 1;
                     if current_fails > number_of_fails {
-                        symmetry = false;
                         break;
                     }
                 }
             }
-            if !symmetry {
+            if current_fails > number_of_fails {
                 break;
             }
             j += 1;
         }
 
-        if symmetry && current_fails == number_of_fails {
+        if current_fails == number_of_fails {
             result.push(i);
         }
     }
@@ -56,7 +54,6 @@ fn find_vertical_symmetry(pattern: &Vec<Vec<char>>, number_of_fails: usize) -> V
     let mut result = Vec::new();
     for i in 1..pattern[0].len() {
         let mut current_fails = 0;
-        let mut symmetry = true;
         let mut j = 0;
         loop {
             if i + j == pattern[0].len() || i - 1 < j {
@@ -67,18 +64,17 @@ fn find_vertical_symmetry(pattern: &Vec<Vec<char>>, number_of_fails: usize) -> V
                 if pattern[index][i + j] != pattern[index][i - j - 1] {
                     current_fails += 1;
                     if current_fails > number_of_fails {
-                        symmetry = false;
                         break;
                     }
                 }
             }
-            if !symmetry {
+            if current_fails > number_of_fails {
                 break;
             }
             j += 1;
         }
 
-        if symmetry && current_fails == number_of_fails {
+        if current_fails == number_of_fails {
             result.push(i);
         }
     }
@@ -90,14 +86,14 @@ fn solve(patterns: &Vec<Vec<Vec<char>>>, number_of_fails: usize) -> usize {
     let mut rows = 0;
     for pattern in patterns {
         let symmetry = find_vertical_symmetry(pattern, number_of_fails);
-        for s in &symmetry {
-            columns += *s;
+        for s in symmetry {
+            columns += s;
         }
     }
     for pattern in patterns {
         let symmetry = find_horizontal_symmetry(pattern, number_of_fails);
-        for s in &symmetry {
-            rows += *s;
+        for s in symmetry {
+            rows += s;
         }
     }
     rows * 100 + columns
