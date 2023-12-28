@@ -1,4 +1,3 @@
-use std::collections::{HashSet, VecDeque};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -14,7 +13,6 @@ enum Direction {
 struct Command {
     direction: Direction,
     steps: usize,
-    color: usize,
 }
 
 impl Command {
@@ -29,7 +27,26 @@ impl Command {
                 _ => unreachable!(),
             },
             steps: parts[1].parse::<usize>().unwrap(),
-            color: 0,
+        }
+    }
+
+    fn from_v2(s: &str) -> Self {
+        let parts: Vec<&str> = s.split(' ').collect();
+        let val = String::from(parts[2])
+            .chars()
+            .skip(2)
+            .take(6)
+            .collect::<String>();
+        Command {
+            direction: match val.chars().nth(5).unwrap() {
+                '0' => Direction::Right,
+                '1' => Direction::Down,
+                '2' => Direction::Left,
+                '3' => Direction::Up,
+                _ => unreachable!(),
+            },
+            steps: usize::from_str_radix(val.chars().take(5).collect::<String>().as_str(), 16)
+                .unwrap(),
         }
     }
 }
@@ -44,130 +61,46 @@ fn parse_input() -> Vec<Command> {
         .collect()
 }
 
-#[allow(dead_code)]
-fn pretty_print(vec: &Vec<Vec<char>>) {
-    for y in 0..vec.len() {
-        for x in 0..vec[y].len() {
-            print!("{}", vec[y][x]);
-        }
-        println!("");
-    }
+fn parse_input_2() -> Vec<Command> {
+    let reader = BufReader::new(File::open("data").unwrap());
+
+    reader
+        .lines()
+        .into_iter()
+        .map(|line| Command::from_v2(&line.unwrap()))
+        .collect()
 }
 
-fn find_start_position(diggings: &Vec<Vec<char>>) -> (usize, usize) {
-    for x in 0..diggings[0].len() {
-        if diggings[0][x] == '#' {
-            return (x + 1, 1);
-        }
-    }
-    unreachable!();
-}
+fn solve(commands: &Vec<Command>) -> usize {
+    let mut x = 0 as isize;
+    let mut y = 0 as isize;
+    let mut area = 0 as isize;
 
-fn convert_to_matrix(
-    hash_set: &HashSet<(i32, i32)>,
-    min_y: i32,
-    max_y: i32,
-    min_x: i32,
-    max_x: i32,
-) -> Vec<Vec<char>> {
-    let mut result = Vec::with_capacity((max_y - min_y) as usize);
+    for command in commands {
+        let old_x = x;
+        let old_y = y;
 
-    for y in min_y..=max_y {
-        let mut v = Vec::with_capacity((max_x - min_x) as usize);
-        for x in min_x..=max_x {
-            if hash_set.contains(&(x, y)) {
-                v.push('#');
-            } else {
-                v.push('.');
-            }
+        match command.direction {
+            Direction::Up => y -= command.steps as isize,
+            Direction::Down => y += command.steps as isize,
+            Direction::Left => x -= command.steps as isize,
+            Direction::Right => x += command.steps as isize,
         }
-        result.push(v);
+        area += (x + old_x) * (y - old_y) + command.steps as isize;
     }
 
-    result
-}
-
-fn flood_fill(diggings: &mut Vec<Vec<char>>, x: usize, y: usize) {
-    let mut queue = VecDeque::from(vec![(x, y)]);
-    while !queue.is_empty() {
-        let (x, y) = queue.pop_front().unwrap();
-        if diggings[y][x] == '#' {
-            continue;
-        }
-
-        diggings[y][x] = '#';
-
-        if x != 0 && diggings[y][x - 1] != '#' {
-            queue.push_back((x - 1, y));
-        }
-        if x != diggings[0].len() - 1 && diggings[y][x + 1] != '#' {
-            queue.push_back((x + 1, y));
-        }
-        if y != 0 && diggings[y - 1][x] != '#' {
-            queue.push_back((x, y - 1));
-        }
-        if y != diggings.len() - 1 && diggings[y + 1][x] != '#' {
-            queue.push_back((x, y + 1));
-        }
-    }
+    (area / 2 + 1) as usize
 }
 
 fn part_1() -> usize {
-    let commands = parse_input();
-    let mut x = 0;
-    let mut y = 0;
-    let mut min_y = 0;
-    let mut max_y = 0;
-    let mut min_x = 0;
-    let mut max_x = 0;
-    let mut diggings: HashSet<(i32, i32)> = HashSet::new();
-    for command in commands {
-        match command.direction {
-            Direction::Up => {
-                for i in 0..command.steps {
-                    y -= 1;
-                    diggings.insert((x, y));
-                }
-            }
-            Direction::Down => {
-                for i in 0..command.steps {
-                    y += 1;
-                    diggings.insert((x, y));
-                }
-            }
-            Direction::Left => {
-                for i in 0..command.steps {
-                    x -= 1;
-                    diggings.insert((x, y));
-                }
-            }
-            Direction::Right => {
-                for i in 0..command.steps {
-                    x += 1;
-                    diggings.insert((x, y));
-                }
-            }
-        }
-        min_y = std::cmp::min(min_y, y);
-        max_y = std::cmp::max(max_y, y);
-        min_x = std::cmp::min(min_x, x);
-        max_x = std::cmp::max(max_x, x);
-    }
-    println!(
-        "min_x: {}, max_x: {}, min_y: {}, max_y: {}",
-        min_x, max_x, min_y, max_y
-    );
+    solve(&parse_input())
+}
 
-    let mut vec = convert_to_matrix(&diggings, min_y, max_y, min_x, max_x);
-    pretty_print(&vec);
-    let (start_x, start_y) = find_start_position(&vec);
-    flood_fill(&mut vec, start_x, start_y);
-
-    println!("");
-    pretty_print(&vec);
-    vec.into_iter().flatten().filter(|e| *e == '#').count()
+fn part_2() -> usize {
+    solve(&parse_input_2())
 }
 
 fn main() {
     println!("part 1: {}", part_1());
+    println!("part 2: {}", part_2());
 }
